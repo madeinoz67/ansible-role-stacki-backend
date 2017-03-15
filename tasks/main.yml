@@ -1,0 +1,181 @@
+---
+
+- name: set hostname to match inventory_hostname
+  hostname:
+    name={{ inventory_hostname|regex_replace('\.$','') }}
+  tags: hostname
+
+- name: prune hostname overrides in /etc/hosts
+  lineinfile:
+    dest=/etc/hosts
+    regexp=^$|{{ inventory_hostname_short }}|{{ ansible_default_ipv4.address }}
+    state=absent
+  tags:
+    - overrides
+
+- name: configure hostname overrides in /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    regexp: >
+      {{ inventory_hostname_short }}|{{ ansible_default_ipv4.address }}
+    line: >
+      {{ ansible_default_ipv4.address }}
+      {{ inventory_hostname|regex_replace('\.$','') }}
+      {{ inventory_hostname_short }}
+    state: present
+    owner: root
+    group: root
+    mode: 0644
+  tags:
+    - overrides
+
+- name: prune resolver config
+  lineinfile:
+    dest=/etc/resolv.conf
+    regexp=^$|nameserver|NXDOMAIN
+    state=absent
+  tags: resolv
+
+- name: configure search hints in resolv.conf
+  lineinfile:
+    dest=/etc/resolv.conf
+    insertbefore=BOF
+    regexp=^search
+    line=search {{ env.hints | unique | join(' ') }}
+    create=yes
+    owner=root
+    group=root
+    mode=0644
+
+- name: configure nameservers in resolv.conf
+  lineinfile:
+    dest=/etc/resolv.conf
+    insertbefore=BOF
+    line=nameserver {{ item | regex_replace('\n','') }}
+    create=yes
+    owner=root
+    group=root
+    mode=0644
+  with_items: "{{ env.ns }}"
+
+- name: configure options in resolv.conf
+  lineinfile:
+    line="options single-request-reopen rotate timeout:1"
+    regexp=^options
+    insertafter=^search
+    state=present
+    dest=/etc/resolv.conf
+
+- name: grant admin privileges to members of %wheel
+  lineinfile:
+    dest=/etc/sudoers
+    state=present
+    insertafter='^# %wheel'
+    regexp='^%wheel'
+    line='%wheel ALL=(ALL) ALL'
+
+- name: create POSIX administrator user accounts
+  user:
+    append=yes
+    groups=wheel
+    createhome=yes
+    name={{ item.username }}-admin
+    password={{ item.passwd }}
+    state=present
+    update_password=always
+  with_items: "{{ admins }}"
+
+- name: authorize admin ssh pubkeys for individual accounts
+  authorized_key: "user={{ item.0.username }}-admin key='{{ item.1 }}' exclusive=yes manage_dir=yes"
+  with_subelements:
+  - "{{ admins }}"
+  - authorized
+
+  # this depends upon the username of the operator matching the username of the
+  # admin in vars/main.yml
+  #- name: discover the root authorized key based on $USER
+  #  set_fact:
+  #    root_key: "{{ item.authorized[0] }}"
+  #  with_items:
+  #    - "{{ admins }}"
+  #  when: item.username == lookup('env','USER')
+  #
+  #- name: authorize admin ssh pubkey for root
+  #  authorized_key:
+  #    user=root
+  #    key={{ root_key }}
+  #    exclusive=yes
+  #    manage_dir=yes
+
+- name: set root password
+  user:
+    name=root
+    password={{ root_shadow }}
+    update_password=always
+
+- name: disable password ssh login as root
+  lineinfile:
+    dest=/etc/ssh/sshd_config
+    state=present
+    insertafter='^#PermitRootLogin'
+    regexp='^PermitRootLogin\s'
+    line='PermitRootLogin without-password'
+  notify: restart_sshd
+  tags: admins
+
+- name: disable ssh protocol version 1
+  lineinfile:
+    dest=/etc/ssh/sshd_config
+    state=present
+    insertafter='^#Protocol\s'
+    regexp='^Protocol\s'
+    line='Protocol 2'
+  notify: restart_sshd
+  tags: sshd
+
+- name: reinstall cento-release to ensure default repos are enabled
+  command: "/usr/bin/yum -y reinstall centos-release"
+  tags: baseurl
+
+- name: disable stacki repo
+  shell: "[[ ! -a /etc/yum.repos.d/stacki.repo ]] || mv /etc/yum.repos.d/stacki.repo /etc/yum.repos.d/stacki.repo.orig"
+  #ignore_errors: yes
+  tags: baseurl
+
+- name: remove yum var infra=stock
+  file:
+    state=absent
+    path=/etc/yum/vars/infra
+  ignore_errors: yes
+  tags: baseurl
+
+- name: override yum releasever variable
+  copy:
+    #content: "7.2.1511"
+    content=7
+    dest=/etc/yum/vars/releasever
+    owner=root
+    group=root
+    mode=0644
+  tags: baseurl
+
+- name: enable yum plugins
+  lineinfile:
+    regexp=^plugins=
+    line=plugins=1
+    dest=/etc/yum.conf
+    insertafter=\[main\]
+  tags: yumplug
+
+- name: install CentOS-Base.repo with baseurl enabled instead of mirrorlist
+  copy:
+    src=etc/yum.repos.d/{{ item }}
+    dest=/etc/yum.repos.d/
+    owner=root
+    group=root
+    mode=0644
+  with_items:
+    - CentOS-Base.repo
+  tags: baseurl
+
+...

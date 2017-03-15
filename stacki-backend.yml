@@ -1,0 +1,59 @@
+
+---
+
+###
+##
+#
+# ansible-playbook --user=root --ask-pass \
+#   --inventory=hosts-stacki-backend.txt \
+#      playbooks/stacki-backend.yml
+#
+##
+###
+
+- hosts: all
+
+  ###
+  ## todo
+  #
+  pre_tasks:
+    # re-run setup to gather facts in case delegate_to localhost has cached the
+    # wrong OS family (e.g., Debian instead of RedHat)
+    - setup:
+
+  roles:
+    - stacki-backend
+
+  tasks:
+  post_tasks:
+
+  ###
+  ## configuration
+  #
+  any_errors_fatal: false
+  # boolean False can accelerate testing in some cases, but we have to turn this
+  # on at least once to discover a new host
+  gather_facts: true
+  # include shared handlers
+  handlers:
+  #- include: ./handlers/shared.yml
+
+  ###
+  ## vars
+  #
+  vars_files:
+  #  - ../roles/stacki-frontend/vars/main.yml
+  vars:
+    kickedbystacki: true
+    env:
+      ns:
+        - 8.8.8.8
+        - 4.2.2.2
+      hints:
+        - subdomain.example.com
+        - example.com
+      ntp: pool.ntp.org
+
+...
+
+
