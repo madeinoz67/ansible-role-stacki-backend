@@ -1,7 +1,16 @@
 stacki-backend
 =========
 
-Ansible tooling for hosts kicked by [Stacki](http://www.stacki.com/), a dandy little kickstart configurator and bootstrapping appliance for CentOS
+Ansible tooling for hosts kicked by [Stacki](http://www.stacki.com/), a dandy
+little kickstart configurator and bootstrapping appliance for CentOS
+
+Stacki is a feature-full configurator that presumes cluster-dependence after OS
+bootstrapping is complete. While this is an elegant solution for many, you may
+need the ping and prompt without these dependencies because you have other tools
+for OS and app configuration and deployment (e.g., curated package
+repositories). This role expresses the steps I took to decouple the target metal
+from the cluster.
+
 
 Requirements
 ------------
