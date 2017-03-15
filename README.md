@@ -1,4 +1,4 @@
-stacki-frontend
+stacki-backend
 =========
 
 Ansible tooling for hosts kicked by [Stacki](http://www.stacki.com/), a dandy little kickstart configurator and bootstrapping appliance for CentOS
@@ -61,7 +61,7 @@ ansible-playbook \
 **ssh as root without a password (because another auth method is enabled) and execute on the comma-separated list (note the trailing comma) any tasks or roles specified in the stacki-backend.yml playbook file**
 ````shell
 ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
-  --inventory 'pxe001.bld403.vdc1.example.com,' \
+  --inventory 'app001.vdc1.example.com,' \
   --user root \
   stacki-frontend.yml
 ````

@@ -1,5 +1,5 @@
 
 # this is the value of variable inventory_hostname and will be used to set the
 fully-qualified hostname via the "hostname" module in tasks/main.yml
-host001.subdomain.example.com
+app001.vdc1.example.com
 
