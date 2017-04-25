@@ -72,7 +72,7 @@ ansible-playbook \
 ANSIBLE_CONFIG=ansible.cfg ansible-playbook \
   --inventory 'app001.vdc1.example.com,' \
   --user root \
-  stacki-frontend.yml
+  stacki-backend.yml
 ````
 
 License
